@@ -1,4 +1,5 @@
 use failure::Error;
+use std;
 use std::rc::Rc;
 
 use embla::assets::Image;
@@ -176,6 +177,45 @@ where
             (ur, (self.white_texture[2], self.white_texture[3])),
             (lr, (self.white_texture[2], self.white_texture[1])),
         ];
+        for &(pos, tex_coord) in verts.iter() {
+            self.vertices.push(TexturedVertex {
+                position: pos,
+                tex_coord: (tex_coord.0 as f32, tex_coord.1 as f32),
+                color: color,
+            })
+        }
+
+        Ok(())
+    }
+
+    fn draw_circle(
+        &mut self,
+        center: Vec2,
+        radius: f32,
+        points: i32,
+        color: (f32, f32, f32, f32),
+    ) -> Result<(), Error> {
+        let mut verts = Vec::new();
+
+        let points = (0..points)
+            .map(|i| {
+                let a = i as f32 * (std::f32::consts::PI * 2.0 / points as f32);
+                center + Vec2::with_angle(a) * radius
+            })
+            .collect::<Vec<_>>();
+        let mut other_points = points.iter().skip(1).cloned().collect::<Vec<_>>();
+        other_points.push(points[0]);
+        for (p1, p2) in points.into_iter().zip(other_points.into_iter()) {
+            verts.extend_from_slice(&[
+                (
+                    (center.0, center.1),
+                    (self.white_texture[0], self.white_texture[1]),
+                ),
+                ((p1.0, p1.1), (self.white_texture[2], self.white_texture[1])),
+                ((p2.0, p2.1), (self.white_texture[2], self.white_texture[3])),
+            ])
+        }
+
         for &(pos, tex_coord) in verts.iter() {
             self.vertices.push(TexturedVertex {
                 position: pos,

@@ -20,4 +20,12 @@ pub trait RenderInterface {
         rect: (f32, f32, f32, f32),
         color: (f32, f32, f32, f32),
     ) -> Result<(), Error>;
+
+    fn draw_circle(
+        &mut self,
+        center: Vec2,
+        radius: f32,
+        points: i32,
+        color: (f32, f32, f32, f32),
+    ) -> Result<(), Error>;
 }

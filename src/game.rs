@@ -1,5 +1,5 @@
 use embla::ecs::World;
-use embla::input::{Input, MouseButton};
+use embla::input::{Input, Key, MouseButton};
 use embla::math::Vec2;
 use failure::Error;
 
@@ -12,6 +12,36 @@ struct ColoredRect {
     rect: (f32, f32, f32, f32),
     color: (f32, f32, f32, f32),
 }
+struct ColoredCircle {
+    radius: f32,
+    color: (f32, f32, f32, f32),
+}
+
+const PAD_PULSE_TIME: f32 = 0.2;
+
+#[derive(PartialEq)]
+enum PadTeam {
+    Blue,
+    Red,
+    Green,
+    Yellow,
+}
+impl PadTeam {
+    pub fn color(&self) -> (f32, f32, f32, f32) {
+        match *self {
+            PadTeam::Blue => (0.0, 0.0, 1.0, 1.0),
+            PadTeam::Red => (1.0, 0.0, 0.0, 1.0),
+            PadTeam::Green => (0.0, 1.0, 0.0, 1.0),
+            PadTeam::Yellow => (1.0, 1.0, 0.0, 1.0),
+        }
+    }
+}
+
+struct Pad {
+    team: PadTeam,
+    triggered: bool,
+    pulse_timer: f32,
+}
 
 pub struct Game {
     grid: Grid,
@@ -22,15 +52,46 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Result<Game, Error> {
-        Ok(Game {
-            grid: Grid::new(10, 20, 20, 20),
+        let mut game = Game {
+            grid: Grid::new(6, 10, 40, 40),
             hovered_tile: None,
             screen_size: Vec2::new(0.0, 0.0),
             world: World::new(),
-        })
+        };
+
+        game.init()?;
+
+        Ok(game)
     }
 
-    pub fn update(&mut self, _dt: f32, input: &Input) -> Result<(), Error> {
+    fn init(&mut self) -> Result<(), Error> {
+        self.insert_pad(1, 1, PadTeam::Blue)?;
+        self.insert_pad(2, 1, PadTeam::Red)?;
+        self.insert_pad(3, 1, PadTeam::Green)?;
+        self.insert_pad(4, 1, PadTeam::Yellow)?;
+
+        Ok(())
+    }
+
+    fn insert_pad(&mut self, x: i32, y: i32, team: PadTeam) -> Result<(), Error> {
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(x, y))
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.2,
+                color: team.color(),
+            })
+            .insert(Pad {
+                team,
+                triggered: false,
+                pulse_timer: 0.0,
+            });
+
+        Ok(())
+    }
+
+    pub fn update(&mut self, dt: f32, input: &Input) -> Result<(), Error> {
         let mut mouse_position = input.mouse_position();
         mouse_position.1 = self.screen_size.1 as f32 - mouse_position.1;
         self.hovered_tile = self.grid.tile_at(mouse_position);
@@ -53,6 +114,29 @@ impl Game {
         for (tile_pos, mut position) in self.world.with_components::<(TilePosition, Position)>() {
             let r = self.grid.cell_rect(tile_pos.0, tile_pos.1);
             position.0 = Vec2::new(r.0 as f32, r.1 as f32);
+        }
+
+        for (mut circle, mut pad) in self.world.with_components::<(ColoredCircle, Pad)>() {
+            pad.triggered = false;
+            pad.pulse_timer = (pad.pulse_timer - dt).max(0.0);
+
+            let trigger = |pad: &mut Pad| {
+                pad.triggered = true;
+                pad.pulse_timer = PAD_PULSE_TIME;
+            };
+
+            match pad.team {
+                PadTeam::Blue if input.key_is_pressed(&Key::A) => trigger(&mut pad),
+                PadTeam::Red if input.key_is_pressed(&Key::S) => trigger(&mut pad),
+                PadTeam::Green if input.key_is_pressed(&Key::D) => trigger(&mut pad),
+                PadTeam::Yellow if input.key_is_pressed(&Key::F) => trigger(&mut pad),
+                _ => {}
+            }
+
+            let max_size = self.grid.cell_height() as f32 * 0.45;
+            let min_size = self.grid.cell_height() as f32 * 0.2;
+            let r = pad.pulse_timer / PAD_PULSE_TIME;
+            circle.radius = min_size + (r * (max_size - min_size));
         }
 
         Ok(())
@@ -86,6 +170,14 @@ impl Game {
                 r.rect.2 as f32 + pos.1,
             );
             renderer.draw_rect(rect, r.color)?;
+        }
+
+        for (position, c) in self.world.with_components::<(Position, ColoredCircle)>() {
+            let center = Vec2::new(
+                self.grid.cell_width() as f32 * 0.5,
+                self.grid.cell_height() as f32 * 0.5,
+            );
+            renderer.draw_circle(position.0 + center, c.radius, 20, c.color)?;
         }
 
         Ok(())
