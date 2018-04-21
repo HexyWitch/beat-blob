@@ -1,10 +1,11 @@
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum PadTeam {
     Blue,
     Red,
     Green,
     Yellow,
 }
+
 impl PadTeam {
     pub fn color(&self) -> (f32, f32, f32, f32) {
         match *self {

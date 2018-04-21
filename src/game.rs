@@ -1,4 +1,4 @@
-use embla::ecs::World;
+use embla::ecs::{EntityId, World};
 use embla::input::{Input, Key, MouseButton};
 use embla::math::Vec2;
 use failure::Error;
@@ -6,15 +6,18 @@ use failure::Error;
 use grid::Grid;
 use render_interface::RenderInterface;
 
-use components::{Blob, ColoredCircle, ColoredRect, Pad, PadTeam, Position, TilePosition};
+use components::{Blob, BlobSpawn, ColoredCircle, ColoredRect, Pad, PadTeam, Position, TilePosition};
 
 const PAD_PULSE_TIME: f32 = 0.1;
+
+const BEAT_TIME: f32 = 0.25;
 
 pub struct Game {
     grid: Grid,
     hovered_tile: Option<(i32, i32)>,
     screen_size: Vec2,
     world: World,
+    beat_timer: f32,
 }
 
 impl Game {
@@ -24,6 +27,7 @@ impl Game {
             hovered_tile: None,
             screen_size: Vec2::new(0.0, 0.0),
             world: World::new(),
+            beat_timer: 0.0,
         };
 
         game.init()?;
@@ -37,22 +41,13 @@ impl Game {
         self.insert_pad(3, 1, PadTeam::Green)?;
         self.insert_pad(4, 1, PadTeam::Yellow)?;
 
-        Ok(())
-    }
-
-    fn insert_pad(&mut self, x: i32, y: i32, team: PadTeam) -> Result<(), Error> {
         self.world
             .add_entity()
-            .insert(Position(Vec2::zero()))
-            .insert(TilePosition(x, y))
-            .insert(ColoredCircle {
-                radius: self.grid.cell_width() as f32 * 0.2,
-                color: team.color(),
-            })
-            .insert(team)
-            .insert(Pad {
-                triggered: false,
-                pulse_timer: 0.0,
+            .insert(TilePosition(1, 9))
+            .insert(PadTeam::Blue)
+            .insert(BlobSpawn {
+                interval: 5,
+                timer: 5,
             });
 
         Ok(())
@@ -75,6 +70,40 @@ impl Game {
                         rect,
                         color: (1.0, 1.0, 1.0, 1.0),
                     });
+            }
+        }
+
+        self.beat_timer += dt;
+        if self.beat_timer > BEAT_TIME {
+            self.beat_timer -= BEAT_TIME;
+
+            // move blobs
+            let mut removed = Vec::new();
+            for (e, mut tile_pos, _) in self.world
+                .with_components::<(EntityId, TilePosition, Blob)>()
+            {
+                tile_pos.1 -= 1;
+                if tile_pos.1 < 0 {
+                    removed.push(*e);
+                }
+            }
+            for e in removed {
+                self.world.remove_entity(e.0);
+            }
+
+            // spawn blobs
+            let mut spawns = Vec::new();
+            for (tile_pos, team, mut spawner) in self.world
+                .with_components::<(TilePosition, PadTeam, BlobSpawn)>()
+            {
+                spawner.timer -= 1;
+                if spawner.timer == 0 {
+                    spawns.push((tile_pos.0, tile_pos.1, *team));
+                    spawner.timer = spawner.interval;
+                }
+            }
+            for (x, y, team) in spawns {
+                self.spawn_blob(x, y, team)?;
             }
         }
 
@@ -148,6 +177,39 @@ impl Game {
             );
             renderer.draw_circle(position.0 + center, c.radius, 20, c.color)?;
         }
+
+        Ok(())
+    }
+
+    fn insert_pad(&mut self, x: i32, y: i32, team: PadTeam) -> Result<(), Error> {
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(x, y))
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.2,
+                color: team.color(),
+            })
+            .insert(team)
+            .insert(Pad {
+                triggered: false,
+                pulse_timer: 0.0,
+            });
+
+        Ok(())
+    }
+
+    fn spawn_blob(&mut self, x: i32, y: i32, team: PadTeam) -> Result<(), Error> {
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(x, y))
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.45,
+                color: team.color(),
+            })
+            .insert(team)
+            .insert(Blob);
 
         Ok(())
     }
