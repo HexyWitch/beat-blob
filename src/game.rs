@@ -6,42 +6,9 @@ use failure::Error;
 use grid::Grid;
 use render_interface::RenderInterface;
 
-struct Position(Vec2);
-struct TilePosition(i32, i32);
-struct ColoredRect {
-    rect: (f32, f32, f32, f32),
-    color: (f32, f32, f32, f32),
-}
-struct ColoredCircle {
-    radius: f32,
-    color: (f32, f32, f32, f32),
-}
+use components::{Blob, ColoredCircle, ColoredRect, Pad, PadTeam, Position, TilePosition};
 
-const PAD_PULSE_TIME: f32 = 0.2;
-
-#[derive(PartialEq)]
-enum PadTeam {
-    Blue,
-    Red,
-    Green,
-    Yellow,
-}
-impl PadTeam {
-    pub fn color(&self) -> (f32, f32, f32, f32) {
-        match *self {
-            PadTeam::Blue => (0.0, 0.0, 1.0, 1.0),
-            PadTeam::Red => (1.0, 0.0, 0.0, 1.0),
-            PadTeam::Green => (0.0, 1.0, 0.0, 1.0),
-            PadTeam::Yellow => (1.0, 1.0, 0.0, 1.0),
-        }
-    }
-}
-
-struct Pad {
-    team: PadTeam,
-    triggered: bool,
-    pulse_timer: f32,
-}
+const PAD_PULSE_TIME: f32 = 0.1;
 
 pub struct Game {
     grid: Grid,
@@ -82,8 +49,8 @@ impl Game {
                 radius: self.grid.cell_width() as f32 * 0.2,
                 color: team.color(),
             })
+            .insert(team)
             .insert(Pad {
-                team,
                 triggered: false,
                 pulse_timer: 0.0,
             });
@@ -116,7 +83,9 @@ impl Game {
             position.0 = Vec2::new(r.0 as f32, r.1 as f32);
         }
 
-        for (mut circle, mut pad) in self.world.with_components::<(ColoredCircle, Pad)>() {
+        for (mut circle, mut pad, team) in self.world
+            .with_components::<(ColoredCircle, Pad, PadTeam)>()
+        {
             pad.triggered = false;
             pad.pulse_timer = (pad.pulse_timer - dt).max(0.0);
 
@@ -125,7 +94,7 @@ impl Game {
                 pad.pulse_timer = PAD_PULSE_TIME;
             };
 
-            match pad.team {
+            match *team {
                 PadTeam::Blue if input.key_is_pressed(&Key::A) => trigger(&mut pad),
                 PadTeam::Red if input.key_is_pressed(&Key::S) => trigger(&mut pad),
                 PadTeam::Green if input.key_is_pressed(&Key::D) => trigger(&mut pad),

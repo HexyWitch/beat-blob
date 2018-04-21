@@ -2,6 +2,7 @@ extern crate embla;
 extern crate failure;
 
 mod application;
+mod components;
 mod game;
 mod grid;
 mod render_interface;
