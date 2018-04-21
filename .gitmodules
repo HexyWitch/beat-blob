@@ -1,0 +1,3 @@
+[submodule "embla"]
+	path = embla
+	url = https://github.com/Healthire/embla
