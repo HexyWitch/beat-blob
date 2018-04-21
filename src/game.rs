@@ -7,7 +7,8 @@ use grid::Grid;
 use render_interface::RenderInterface;
 use systems;
 
-use components::{BlobSpawn, ColoredCircle, ColoredRect, Pad, PadTeam, Position, TilePosition};
+use components::{BlobSpawn, ColoredCircle, ColoredRect, FillMode, Pad, PadTeam, Position,
+                 TilePosition};
 
 const BEAT_TIME: f32 = 0.25;
 
@@ -42,8 +43,14 @@ impl Game {
 
         self.world
             .add_entity()
+            .insert(Position(Vec2::zero()))
             .insert(TilePosition(1, 9))
             .insert(PadTeam::Blue)
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.35,
+                color: PadTeam::Blue.color(),
+                fill: FillMode::Outline(2.0),
+            })
             .insert(BlobSpawn {
                 interval: 3,
                 timer: 3,
@@ -125,6 +132,7 @@ impl Game {
             .insert(ColoredCircle {
                 radius: self.grid.cell_width() as f32 * 0.2,
                 color: team.color(),
+                fill: FillMode::Filled,
             })
             .insert(team)
             .insert(Pad { pulse_timer: 0.0 });

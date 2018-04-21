@@ -11,7 +11,7 @@ pub fn tween_blobs(beat_timer: f32, grid: &Grid, world: &mut World) -> Result<()
         let width = grid.cell_width() as f32;
         let cell = grid.cell_rect(tile_pos.0, tile_pos.1);
         let center = Vec2::new(cell.0 as f32 + width / 2.0, cell.1 as f32 + height / 2.0);
-        position.0 = center + Vec2::new(0.0, height / 2.0 - height * beat_timer)
+        position.0 = center + Vec2::new(0.0, -height * beat_timer)
     }
 
     Ok(())

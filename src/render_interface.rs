@@ -28,4 +28,12 @@ pub trait RenderInterface {
         points: i32,
         color: (f32, f32, f32, f32),
     ) -> Result<(), Error>;
+
+    fn draw_line(
+        &mut self,
+        p1: Vec2,
+        p2: Vec2,
+        width: f32,
+        color: (f32, f32, f32, f32),
+    ) -> Result<(), Error>;
 }

@@ -226,4 +226,41 @@ where
 
         Ok(())
     }
+
+    fn draw_line(
+        &mut self,
+        p1: Vec2,
+        p2: Vec2,
+        width: f32,
+        color: (f32, f32, f32, f32),
+    ) -> Result<(), Error> {
+        let rotate = |v: Vec2, a: f32| {
+            Vec2::new(v.0 * a.cos() - v.1 * a.sin(), v.0 * a.sin() + v.1 * a.cos())
+        };
+
+        let length = (p2 - p1).mag();
+        let a = (p2 - p1).angle();
+        let ll = rotate(Vec2::new(0.0, -width / 2.0), a) + p1;
+        let ul = rotate(Vec2::new(0.0, width / 2.0), a) + p1;
+        let ur = rotate(Vec2::new(length, width / 2.0), a) + p1;
+        let lr = rotate(Vec2::new(length, -width / 2.0), a) + p1;
+        let verts = [
+            (ll, (self.white_texture[0], self.white_texture[1])),
+            (ul, (self.white_texture[0], self.white_texture[3])),
+            (lr, (self.white_texture[2], self.white_texture[1])),
+            (ul, (self.white_texture[0], self.white_texture[3])),
+            (ur, (self.white_texture[2], self.white_texture[3])),
+            (lr, (self.white_texture[2], self.white_texture[1])),
+        ];
+
+        for &(pos, tex_coord) in verts.iter() {
+            self.vertices.push(TexturedVertex {
+                position: (pos.0, pos.1),
+                tex_coord: (tex_coord.0 as f32, tex_coord.1 as f32),
+                color: color,
+            })
+        }
+
+        Ok(())
+    }
 }

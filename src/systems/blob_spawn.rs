@@ -2,7 +2,7 @@ use embla::ecs::World;
 use embla::math::Vec2;
 use failure::Error;
 
-use components::{Blob, BlobSpawn, ColoredCircle, PadTeam, Position, TilePosition};
+use components::{Blob, BlobSpawn, ColoredCircle, FillMode, PadTeam, Position, TilePosition};
 
 pub fn spawn_blobs(world: &mut World) -> Result<(), Error> {
     let mut spawns = Vec::new();
@@ -30,6 +30,7 @@ fn create_blob(world: &mut World, x: i32, y: i32, team: PadTeam) -> Result<(), E
         .insert(ColoredCircle {
             radius: BLOB_RADIUS,
             color: team.color(),
+            fill: FillMode::Filled,
         })
         .insert(team)
         .insert(Blob);
