@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use embla::math::Vec2;
 
 pub struct Grid {
@@ -5,6 +7,7 @@ pub struct Grid {
     height: i32,
     cell_width: i32,
     cell_height: i32,
+    occupied: HashSet<(i32, i32)>,
 }
 
 impl Grid {
@@ -14,6 +17,7 @@ impl Grid {
             height,
             cell_width,
             cell_height,
+            occupied: HashSet::new(),
         }
     }
 
@@ -50,5 +54,17 @@ impl Grid {
         } else {
             None
         }
+    }
+
+    pub fn set_occupied(&mut self, tile: (i32, i32), occupied: bool) {
+        if occupied {
+            self.occupied.insert(tile);
+        } else {
+            self.occupied.remove(&tile);
+        }
+    }
+
+    pub fn occupied(&self, tile: &(i32, i32)) -> bool {
+        self.occupied.contains(tile)
     }
 }

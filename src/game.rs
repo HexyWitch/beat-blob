@@ -23,7 +23,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Result<Game, Error> {
         let mut game = Game {
-            grid: Grid::new(6, 10, 40, 40),
+            grid: Grid::new(9, 10, 40, 40),
             hovered_tile: None,
             screen_size: Vec2::new(0.0, 0.0),
             world: World::new(),
@@ -37,14 +37,14 @@ impl Game {
 
     fn init(&mut self) -> Result<(), Error> {
         self.insert_pad(1, 1, PadTeam::Blue)?;
-        self.insert_pad(2, 1, PadTeam::Red)?;
-        self.insert_pad(3, 1, PadTeam::Green)?;
-        self.insert_pad(4, 1, PadTeam::Yellow)?;
+        self.insert_pad(3, 1, PadTeam::Red)?;
+        self.insert_pad(5, 1, PadTeam::Green)?;
+        self.insert_pad(7, 1, PadTeam::Yellow)?;
 
         self.world
             .add_entity()
             .insert(Position(Vec2::zero()))
-            .insert(TilePosition(5, 9))
+            .insert(TilePosition(1, 9))
             .insert(PadTeam::Blue)
             .insert(ColoredCircle {
                 radius: self.grid.cell_width() as f32 * 0.35,
@@ -52,18 +52,100 @@ impl Game {
                 fill: FillMode::Outline(2.0),
             })
             .insert(BlobSpawn {
+                interval: 2,
+                timer: 2,
+            });
+
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(3, 9))
+            .insert(PadTeam::Red)
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.35,
+                color: PadTeam::Red.color(),
+                fill: FillMode::Outline(2.0),
+            })
+            .insert(BlobSpawn {
                 interval: 4,
-                timer: 1,
+                timer: 4,
+            });
+
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(5, 9))
+            .insert(PadTeam::Green)
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.35,
+                color: PadTeam::Green.color(),
+                fill: FillMode::Outline(2.0),
+            })
+            .insert(BlobSpawn {
+                interval: 6,
+                timer: 6,
+            });
+
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(7, 9))
+            .insert(PadTeam::Yellow)
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.35,
+                color: PadTeam::Yellow.color(),
+                fill: FillMode::Outline(2.0),
+            })
+            .insert(BlobSpawn {
+                interval: 8,
+                timer: 8,
             });
 
         self.world
             .add_entity()
             .insert(Position(Vec2::zero()))
             .insert(TilePosition(1, 0))
+            .insert(PadTeam::Blue)
             .insert(ColoredCircle {
-                radius: self.grid.cell_width() as f32 * 0.35,
-                color: (0.0, 0.0, 0.0, 1.0),
-                fill: FillMode::Outline(4.0),
+                radius: self.grid.cell_width() as f32 * 0.45,
+                color: PadTeam::Blue.color(),
+                fill: FillMode::Outline(2.0),
+            })
+            .insert(BlobGoal);
+
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(3, 0))
+            .insert(PadTeam::Red)
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.45,
+                color: PadTeam::Red.color(),
+                fill: FillMode::Outline(2.0),
+            })
+            .insert(BlobGoal);
+
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(5, 0))
+            .insert(PadTeam::Green)
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.45,
+                color: PadTeam::Green.color(),
+                fill: FillMode::Outline(2.0),
+            })
+            .insert(BlobGoal);
+
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(7, 0))
+            .insert(PadTeam::Yellow)
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.45,
+                color: PadTeam::Yellow.color(),
+                fill: FillMode::Outline(2.0),
             })
             .insert(BlobGoal);
 
@@ -77,16 +159,7 @@ impl Game {
 
         if let Some(tile) = self.hovered_tile {
             if input.mouse_button_is_down(&MouseButton::Left) {
-                let size = (self.grid.cell_width(), self.grid.cell_height());
-                let rect = (1.0, 1.0, size.0 as f32 - 1.0, size.1 as f32 - 1.0);
-                self.world
-                    .add_entity()
-                    .insert(Position(Vec2::zero()))
-                    .insert(TilePosition(tile.0, tile.1))
-                    .insert(ColoredRect {
-                        rect,
-                        color: (1.0, 1.0, 1.0, 1.0),
-                    });
+                self.insert_wall(tile)?;
             }
         }
 
@@ -135,15 +208,32 @@ impl Game {
         Ok(())
     }
 
+    fn insert_wall(&mut self, (x, y): (i32, i32)) -> Result<(), Error> {
+        let size = (self.grid.cell_width(), self.grid.cell_height());
+        let rect = (1.0, 1.0, size.0 as f32 - 1.0, size.1 as f32 - 1.0);
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(x, y))
+            .insert(ColoredRect {
+                rect,
+                color: (1.0, 1.0, 1.0, 1.0),
+            });
+
+        self.grid.set_occupied((x, y), true);
+
+        Ok(())
+    }
+
     fn insert_pad(&mut self, x: i32, y: i32, team: PadTeam) -> Result<(), Error> {
         self.world
             .add_entity()
             .insert(Position(Vec2::zero()))
             .insert(TilePosition(x, y))
             .insert(ColoredCircle {
-                radius: self.grid.cell_width() as f32 * 0.2,
+                radius: self.grid.cell_width() as f32 * 0.35,
                 color: team.color(),
-                fill: FillMode::Filled,
+                fill: FillMode::Outline(6.0),
             })
             .insert(team)
             .insert(Pad { pulse_timer: 0.0 });

@@ -14,7 +14,7 @@ pub fn pad_update(dt: f32, input: &Input, grid: &Grid, world: &mut World) -> Res
         pad.pulse_timer = (pad.pulse_timer - dt).max(0.0);
 
         let mut trigger = |pad: &mut Pad| {
-            triggered_tiles.push(*tile_pos);
+            triggered_tiles.push((*tile_pos, *team));
             pad.pulse_timer = PAD_PULSE_TIME;
         };
 
@@ -26,14 +26,14 @@ pub fn pad_update(dt: f32, input: &Input, grid: &Grid, world: &mut World) -> Res
             _ => {}
         }
 
-        let max_size = grid.cell_height() as f32 * 0.45;
-        let min_size = grid.cell_height() as f32 * 0.2;
+        let max_size = grid.cell_height() as f32 * 0.35;
+        let min_size = grid.cell_height() as f32 * 0.45;
         let r = pad.pulse_timer / PAD_PULSE_TIME;
         circle.radius = min_size + (r * (max_size - min_size));
     }
 
-    for tile in triggered_tiles {
-        world.add_entity().insert(TileTrigger).insert(tile);
+    for (tile, team) in triggered_tiles {
+        world.add_entity().insert(TileTrigger { team }).insert(tile);
     }
 
     Ok(())

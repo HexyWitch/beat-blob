@@ -19,12 +19,13 @@ pub fn spawn_blobs(grid: &Grid, world: &mut World) -> Result<(), Error> {
         }
     }
 
-    let goal_pos = world
-        .with_components::<(TilePosition, BlobGoal)>()
-        .next()
-        .map(|(t, _)| (t.0, t.1))
-        .unwrap();
     for (x, y, team) in spawns {
+        let goal_pos = world
+            .with_components::<(TilePosition, PadTeam, BlobGoal)>()
+            .filter(|(_, t, _)| **t == team)
+            .next()
+            .map(|(pos, _, _)| (pos.0, pos.1))
+            .unwrap();
         let path = find_path((x, y), goal_pos, grid)?.unwrap();
         create_blob(world, x, y, team, path)?;
     }

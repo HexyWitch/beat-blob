@@ -12,15 +12,15 @@ pub fn find_path(
     fn neighbors<'a>(
         (x, y): (i32, i32),
         visited: &'a HashSet<(i32, i32)>,
-        grid_width: i32,
-        grid_height: i32,
+        grid: &'a Grid,
     ) -> impl Iterator<Item = (i32, i32)> + 'a {
         [(0, 1), (1, 0), (-1, 0), (0, -1)]
             .into_iter()
             .filter_map(move |direction| {
                 let adjacent = (x + direction.0, y + direction.1);
-                if adjacent.0 >= 0 && adjacent.0 < grid_width && adjacent.1 >= 0
-                    && adjacent.1 < grid_height && !visited.contains(&adjacent)
+                if adjacent.0 >= 0 && adjacent.0 < grid.width() && adjacent.1 >= 0
+                    && adjacent.1 < grid.height() && !visited.contains(&adjacent)
+                    && !grid.occupied(&adjacent)
                 {
                     Some(adjacent)
                 } else {
@@ -51,7 +51,7 @@ pub fn find_path(
         for n in nodes {
             visited.insert(n);
 
-            for adjacent in neighbors(n, &visited, grid.width(), grid.height()) {
+            for adjacent in neighbors(n, &visited, grid) {
                 if adjacent == end {
                     // reached the end, collect the path
                     break 'pathfind {
