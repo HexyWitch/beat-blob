@@ -73,7 +73,7 @@ impl Game {
         }
 
         self.beat_timer += dt;
-        if self.beat_timer > BEAT_TIME {
+        while self.beat_timer > BEAT_TIME {
             self.beat_timer -= BEAT_TIME;
 
             systems::move_blobs(&mut self.world)?;
@@ -81,6 +81,10 @@ impl Game {
         }
 
         systems::grid_positioning(&self.grid, &mut self.world)?;
+
+        // do all tweening after grid positioning
+        let beat_ratio = self.beat_timer / BEAT_TIME;
+        systems::tween_blobs(beat_ratio, &self.grid, &mut self.world)?;
 
         systems::pad_update(dt, input, &self.grid, &mut self.world)?;
 
