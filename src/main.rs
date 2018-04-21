@@ -3,6 +3,7 @@ extern crate failure;
 
 mod application;
 mod game;
+mod grid;
 mod render_interface;
 mod renderer;
 

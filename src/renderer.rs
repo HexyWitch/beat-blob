@@ -1,9 +1,11 @@
 use failure::Error;
 use std::rc::Rc;
 
+use embla::assets::Image;
 use embla::graphics::{TextureAtlas, TextureImage};
 use embla::math::Vec2;
-use embla::rendering_api::{Program, Renderer, Texture, Uniform, Vertex, VertexAttributeType};
+use embla::rendering_api::{Program, Renderer, Texture, TextureFiltering, Uniform, Vertex,
+                           VertexAttributeType};
 
 use render_interface::RenderInterface;
 
@@ -30,8 +32,9 @@ pub struct GameRenderer<R: Renderer> {
     program: R::Program,
     vertex_buffer: R::VertexBuffer,
     vertices: Vec<TexturedVertex>,
-    atlas: TextureAtlas,
     texture: Rc<R::Texture>,
+    atlas: TextureAtlas,
+    white_texture: [u32; 4],
 }
 
 impl<R> GameRenderer<R>
@@ -46,7 +49,10 @@ where
 
         let texture_size = (4096, 4096);
 
-        let texture = Rc::new(R::create_texture(texture_size)?);
+        let texture = Rc::new(R::create_texture(
+            texture_size,
+            Some(TextureFiltering::Nearest),
+        )?);
 
         let screen_size = R::screen_size();
         program.set_uniform(
@@ -59,16 +65,45 @@ where
         );
         program.set_uniform("texture", Uniform::Texture(texture.clone()));
 
+        let mut atlas = TextureAtlas::new(texture_size);
+        let white_image = TextureImage::new(Rc::new(Image {
+            data: vec![255, 255, 255, 255],
+            width: 1,
+            height: 1,
+        }));
+        let white_texture = atlas.add_texture(&white_image)?;
+        texture.set_region(white_image.image(), (white_texture[0], white_texture[1]));
+
         Ok(GameRenderer::<R> {
-            program: program,
+            program,
             vertex_buffer: R::create_vertex_buffer()?,
             vertices: Vec::new(),
-            atlas: TextureAtlas::new(texture_size),
-            texture: texture,
+            texture,
+            atlas,
+            white_texture,
         })
     }
 
-    pub fn draw_texture(
+    pub fn do_render(&mut self) -> Result<(), Error> {
+        R::clear(Some((0.0, 0.0, 0.0, 1.0)));
+
+        R::render_vertices(&self.vertex_buffer, &self.program, &self.vertices)?;
+
+        self.vertices.clear();
+
+        Ok(())
+    }
+}
+
+impl<R> RenderInterface for GameRenderer<R>
+where
+    R: Renderer,
+{
+    fn screen_size(&self) -> (i32, i32) {
+        R::screen_size()
+    }
+
+    fn draw_texture(
         &mut self,
         texture: &TextureImage,
         position: Vec2,
@@ -124,28 +159,31 @@ where
         Ok(())
     }
 
-    pub fn do_render(&mut self) -> Result<(), Error> {
-        R::clear(Some((0.0, 0.0, 0.0, 1.0)));
-
-        R::render_vertices(&self.vertex_buffer, &self.program, &self.vertices)?;
-
-        self.vertices.clear();
+    fn draw_rect(
+        &mut self,
+        rect: (f32, f32, f32, f32),
+        color: (f32, f32, f32, f32),
+    ) -> Result<(), Error> {
+        let ll = (rect.0, rect.1);
+        let ul = (rect.0, rect.3);
+        let ur = (rect.2, rect.3);
+        let lr = (rect.2, rect.1);
+        let verts = [
+            (ll, (self.white_texture[0], self.white_texture[1])),
+            (ul, (self.white_texture[0], self.white_texture[3])),
+            (lr, (self.white_texture[2], self.white_texture[1])),
+            (ul, (self.white_texture[0], self.white_texture[3])),
+            (ur, (self.white_texture[2], self.white_texture[3])),
+            (lr, (self.white_texture[2], self.white_texture[1])),
+        ];
+        for &(pos, tex_coord) in verts.iter() {
+            self.vertices.push(TexturedVertex {
+                position: pos,
+                tex_coord: (tex_coord.0 as f32, tex_coord.1 as f32),
+                color: color,
+            })
+        }
 
         Ok(())
-    }
-}
-
-impl<R> RenderInterface for GameRenderer<R>
-where
-    R: Renderer,
-{
-    fn draw_texture(
-        &mut self,
-        texture: &TextureImage,
-        position: Vec2,
-        scale: f32,
-        rotation: f32,
-    ) -> Result<(), Error> {
-        self.draw_texture(texture, position, scale, rotation)
     }
 }
