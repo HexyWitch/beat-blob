@@ -9,7 +9,8 @@ use render_interface::RenderInterface;
 
 pub fn render_primitives(world: &mut World, renderer: &mut RenderInterface) -> Result<(), Error> {
     for (position, r) in world.with_components::<(Position, ColoredRect)>() {
-        let pos = position.0;
+        let size = Vec2::new((r.rect.2 - r.rect.0) as f32, (r.rect.3 - r.rect.1) as f32);
+        let pos = position.0 - size / 2.0;
         let rect = (
             r.rect.0 as f32 + pos.0,
             r.rect.1 as f32 + pos.1,

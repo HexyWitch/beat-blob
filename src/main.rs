@@ -1,10 +1,12 @@
 extern crate embla;
+#[macro_use]
 extern crate failure;
 
 mod application;
 mod components;
 mod game;
 mod grid;
+mod pathfind;
 mod render_interface;
 mod renderer;
 mod systems;

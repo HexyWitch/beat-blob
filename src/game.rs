@@ -7,8 +7,8 @@ use grid::Grid;
 use render_interface::RenderInterface;
 use systems;
 
-use components::{BlobSpawn, ColoredCircle, ColoredRect, FillMode, Pad, PadTeam, Position,
-                 TilePosition};
+use components::{BlobGoal, BlobSpawn, ColoredCircle, ColoredRect, FillMode, Pad, PadTeam,
+                 Position, TilePosition};
 
 const BEAT_TIME: f32 = 0.25;
 
@@ -44,7 +44,7 @@ impl Game {
         self.world
             .add_entity()
             .insert(Position(Vec2::zero()))
-            .insert(TilePosition(1, 9))
+            .insert(TilePosition(5, 9))
             .insert(PadTeam::Blue)
             .insert(ColoredCircle {
                 radius: self.grid.cell_width() as f32 * 0.35,
@@ -52,9 +52,20 @@ impl Game {
                 fill: FillMode::Outline(2.0),
             })
             .insert(BlobSpawn {
-                interval: 3,
-                timer: 3,
+                interval: 4,
+                timer: 1,
             });
+
+        self.world
+            .add_entity()
+            .insert(Position(Vec2::zero()))
+            .insert(TilePosition(1, 0))
+            .insert(ColoredCircle {
+                radius: self.grid.cell_width() as f32 * 0.35,
+                color: (0.0, 0.0, 0.0, 1.0),
+                fill: FillMode::Outline(4.0),
+            })
+            .insert(BlobGoal);
 
         Ok(())
     }
@@ -80,13 +91,13 @@ impl Game {
         }
 
         self.beat_timer += dt;
+        // On beat
         while self.beat_timer > BEAT_TIME {
             self.beat_timer -= BEAT_TIME;
 
             systems::move_blobs(&mut self.world)?;
-            systems::spawn_blobs(&mut self.world)?;
+            systems::spawn_blobs(&self.grid, &mut self.world)?;
         }
-
         systems::grid_positioning(&self.grid, &mut self.world)?;
 
         // do all tweening after grid positioning
