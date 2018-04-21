@@ -1,14 +1,13 @@
-use embla::ecs::{EntityId, World};
-use embla::input::{Input, Key, MouseButton};
+use embla::ecs::World;
+use embla::input::{Input, MouseButton};
 use embla::math::Vec2;
 use failure::Error;
 
 use grid::Grid;
 use render_interface::RenderInterface;
+use systems;
 
-use components::{Blob, BlobSpawn, ColoredCircle, ColoredRect, Pad, PadTeam, Position, TilePosition};
-
-const PAD_PULSE_TIME: f32 = 0.1;
+use components::{BlobSpawn, ColoredCircle, ColoredRect, Pad, PadTeam, Position, TilePosition};
 
 const BEAT_TIME: f32 = 0.25;
 
@@ -46,8 +45,8 @@ impl Game {
             .insert(TilePosition(1, 9))
             .insert(PadTeam::Blue)
             .insert(BlobSpawn {
-                interval: 5,
-                timer: 5,
+                interval: 3,
+                timer: 3,
             });
 
         Ok(())
@@ -77,65 +76,15 @@ impl Game {
         if self.beat_timer > BEAT_TIME {
             self.beat_timer -= BEAT_TIME;
 
-            // move blobs
-            let mut removed = Vec::new();
-            for (e, mut tile_pos, _) in self.world
-                .with_components::<(EntityId, TilePosition, Blob)>()
-            {
-                tile_pos.1 -= 1;
-                if tile_pos.1 < 0 {
-                    removed.push(*e);
-                }
-            }
-            for e in removed {
-                self.world.remove_entity(e.0);
-            }
-
-            // spawn blobs
-            let mut spawns = Vec::new();
-            for (tile_pos, team, mut spawner) in self.world
-                .with_components::<(TilePosition, PadTeam, BlobSpawn)>()
-            {
-                spawner.timer -= 1;
-                if spawner.timer == 0 {
-                    spawns.push((tile_pos.0, tile_pos.1, *team));
-                    spawner.timer = spawner.interval;
-                }
-            }
-            for (x, y, team) in spawns {
-                self.spawn_blob(x, y, team)?;
-            }
+            systems::move_blobs(&mut self.world)?;
+            systems::spawn_blobs(&mut self.world)?;
         }
 
-        for (tile_pos, mut position) in self.world.with_components::<(TilePosition, Position)>() {
-            let r = self.grid.cell_rect(tile_pos.0, tile_pos.1);
-            position.0 = Vec2::new(r.0 as f32, r.1 as f32);
-        }
+        systems::grid_positioning(&self.grid, &mut self.world)?;
 
-        for (mut circle, mut pad, team) in self.world
-            .with_components::<(ColoredCircle, Pad, PadTeam)>()
-        {
-            pad.triggered = false;
-            pad.pulse_timer = (pad.pulse_timer - dt).max(0.0);
+        systems::pad_update(dt, input, &self.grid, &mut self.world)?;
 
-            let trigger = |pad: &mut Pad| {
-                pad.triggered = true;
-                pad.pulse_timer = PAD_PULSE_TIME;
-            };
-
-            match *team {
-                PadTeam::Blue if input.key_is_pressed(&Key::A) => trigger(&mut pad),
-                PadTeam::Red if input.key_is_pressed(&Key::S) => trigger(&mut pad),
-                PadTeam::Green if input.key_is_pressed(&Key::D) => trigger(&mut pad),
-                PadTeam::Yellow if input.key_is_pressed(&Key::F) => trigger(&mut pad),
-                _ => {}
-            }
-
-            let max_size = self.grid.cell_height() as f32 * 0.45;
-            let min_size = self.grid.cell_height() as f32 * 0.2;
-            let r = pad.pulse_timer / PAD_PULSE_TIME;
-            circle.radius = min_size + (r * (max_size - min_size));
-        }
+        systems::trigger_blobs(&mut self.world)?;
 
         Ok(())
     }
@@ -159,24 +108,7 @@ impl Game {
             }
         }
 
-        for (position, r) in self.world.with_components::<(Position, ColoredRect)>() {
-            let pos = position.0;
-            let rect = (
-                r.rect.0 as f32 + pos.0,
-                r.rect.1 as f32 + pos.1,
-                r.rect.2 as f32 + pos.0,
-                r.rect.2 as f32 + pos.1,
-            );
-            renderer.draw_rect(rect, r.color)?;
-        }
-
-        for (position, c) in self.world.with_components::<(Position, ColoredCircle)>() {
-            let center = Vec2::new(
-                self.grid.cell_width() as f32 * 0.5,
-                self.grid.cell_height() as f32 * 0.5,
-            );
-            renderer.draw_circle(position.0 + center, c.radius, 20, c.color)?;
-        }
+        systems::render_primitives(&mut self.world, renderer)?;
 
         Ok(())
     }
@@ -191,25 +123,7 @@ impl Game {
                 color: team.color(),
             })
             .insert(team)
-            .insert(Pad {
-                triggered: false,
-                pulse_timer: 0.0,
-            });
-
-        Ok(())
-    }
-
-    fn spawn_blob(&mut self, x: i32, y: i32, team: PadTeam) -> Result<(), Error> {
-        self.world
-            .add_entity()
-            .insert(Position(Vec2::zero()))
-            .insert(TilePosition(x, y))
-            .insert(ColoredCircle {
-                radius: self.grid.cell_width() as f32 * 0.45,
-                color: team.color(),
-            })
-            .insert(team)
-            .insert(Blob);
+            .insert(Pad { pulse_timer: 0.0 });
 
         Ok(())
     }

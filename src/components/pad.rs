@@ -18,6 +18,5 @@ impl PadTeam {
 }
 
 pub struct Pad {
-    pub triggered: bool,
     pub pulse_timer: f32,
 }

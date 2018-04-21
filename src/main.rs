@@ -7,6 +7,7 @@ mod game;
 mod grid;
 mod render_interface;
 mod renderer;
+mod systems;
 
 use application::Application;
 
