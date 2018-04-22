@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use embla::math::Vec2;
+use embla::util::astar::astar;
 
 pub struct Grid {
     width: i32,
@@ -66,5 +67,28 @@ impl Grid {
 
     pub fn occupied(&self, tile: &(i32, i32)) -> bool {
         self.occupied.contains(tile)
+    }
+
+    pub fn find_path<'a>(&'a self, start: (i32, i32), end: (i32, i32)) -> Option<Vec<(i32, i32)>> {
+        astar(
+            start,
+            end,
+            |n| {
+                Box::new([(1, 0), (0, 1), (-1, 0), (0, -1)].into_iter().filter_map(
+                    move |direction| {
+                        let adjacent = (n.0 + direction.0, n.1 + direction.1);
+                        if adjacent.0 >= 0 && adjacent.0 < self.width() && adjacent.1 >= 0
+                            && adjacent.1 < self.height()
+                            && !self.occupied(&adjacent)
+                        {
+                            Some((adjacent, 1))
+                        } else {
+                            None
+                        }
+                    },
+                ))
+            },
+            |from, to| (to.0 - from.0).abs() + (to.1 - from.1).abs(),
+        )
     }
 }

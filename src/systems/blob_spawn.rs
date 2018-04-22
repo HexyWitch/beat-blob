@@ -5,7 +5,6 @@ use failure::Error;
 use components::{Blob, BlobGoal, BlobSpawn, ColoredCircle, FillMode, PadTeam, Position,
                  TilePosition};
 use grid::Grid;
-use pathfind::find_path;
 
 pub fn spawn_blobs(grid: &Grid, world: &mut World) -> Result<(), Error> {
     let mut spawns = Vec::new();
@@ -26,7 +25,7 @@ pub fn spawn_blobs(grid: &Grid, world: &mut World) -> Result<(), Error> {
             .next()
             .map(|(pos, _, _)| (pos.0, pos.1))
             .unwrap();
-        let path = find_path((x, y), goal_pos, grid)?.unwrap();
+        let path = grid.find_path((x, y), goal_pos).unwrap();
         create_blob(world, x, y, team, path)?;
     }
     Ok(())
